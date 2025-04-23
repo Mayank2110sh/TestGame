@@ -6,6 +6,11 @@ public class TouchManager : MonoBehaviour
     const float positionMultiplier = 1.28f;
     Vector3 touchOffset = Vector3.zero;
     private float dragSmoothSpeed = 10f;
+
+    private void Start()
+    {
+        Application.targetFrameRate = 60;
+    }
     private void Update()
     {
         if (Input.touchCount == 1)
@@ -16,7 +21,7 @@ public class TouchManager : MonoBehaviour
 
     void HandleTouch()
     {
-        
+
         Touch touch = Input.GetTouch(0);
         if (touch.phase == TouchPhase.Began)
         {
@@ -36,21 +41,33 @@ public class TouchManager : MonoBehaviour
         {
             if (selectedBlock)
             {
+
                 Vector3 worldTouch = Camera.main.ScreenToWorldPoint(new Vector3(touch.position.x, touch.position.y, Camera.main.WorldToScreenPoint(selectedBlock.position).z));
                 Vector3 proposedPosition = worldTouch + touchOffset;
                 Vector3 moveDir = proposedPosition - selectedBlock.position;
 
                 if (moveDir != Vector3.zero)
                 {
-                    // Check in that direction
                     float distance = moveDir.magnitude;
                     Vector3 direction = moveDir.normalized;
-                    Vector3 boxExtents = selectedBlock.GetComponent<Collider>().bounds.extents * 0.95f;
+                    Vector3 boxExtents = selectedBlock.GetComponent<Collider>().bounds.extents;
 
-                    // Only move if no collision in the way
-                    bool isBlocked = Physics.BoxCast(selectedBlock.position, boxExtents, direction, out RaycastHit hit, selectedBlock.rotation, distance);
+                    // Slightly increase extents to be more reliable
+                    Vector3 adjustedExtents = boxExtents * 0.95f;
 
-                    if (!isBlocked || hit.transform == selectedBlock)
+                    RaycastHit[] hits = Physics.BoxCastAll(selectedBlock.position, adjustedExtents, direction, selectedBlock.rotation, distance);
+                    bool isBlocked = false;
+
+                    foreach (var hit in hits)
+                    {
+                        if (hit.transform != selectedBlock && hit.collider.CompareTag("Block"))
+                        {
+                            isBlocked = true;
+                            break;
+                        }
+                    }
+
+                    if (!isBlocked)
                     {
                         selectedBlock.position = proposedPosition;
                     }
